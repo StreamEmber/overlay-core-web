@@ -1,0 +1,25 @@
+# Her push ve PR'da: testler, sürüm tutarlılığı, npm paketinin içeriği.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm test
+      - name: Sürüm tutarlılığı
+        run: |
+          V="$(node -p "require('./package.json').version")"
+          grep -q "SDK_VERSION = '$V'" src/index.js || { echo "::error::src/index.js SDK_VERSION $V değil (npm version kullanın)"; exit 1; }
+      - run: npm pack --dry-run

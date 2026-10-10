@@ -1,0 +1,54 @@
+# v* etiketi itildiğinde: test et, npm'e yayınla, GitHub Release aç.
+#   npm version 1.0.0 && git push --follow-tags
+# Yayın kimliği (ikisinden biri):
+#  1) Trusted Publishing (önerilen, token yok): npmjs.com > paket > Settings > Trusted Publisher >
+#     GitHub Actions: StreamEmberPlatform / overlay-core-web / release.yml  → NPM_TOKEN secret'ı gerekmez.
+#     (Paket npm'de henüz yoksa ilk yayın NPM_TOKEN ile yapılır, sonra Trusted Publisher eklenir.)
+#  2) NPM_TOKEN secret'ı: "Bypass 2FA" işaretli granular token.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: npm CLI (Trusted Publishing için >= 11.5.1)
+        run: npm install -g npm@^11.5.1 && npm -v
+
+      - name: Etiket ile package.json sürümü aynı mı?
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then echo "Etiket v$TAG ama package.json $PKG"; exit 1; fi
+
+      - run: npm test
+
+      - name: npm kimliği (teşhis)
+        run: npm whoami || echo "Token yok ya da geçersiz; Trusted Publishing (OIDC) denenecek"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: npm publish
+        # NPM_TOKEN boşsa npm OIDC ile (Trusted Publishing) yayınlar
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
