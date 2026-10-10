@@ -42,7 +42,9 @@ test('otomasyon: RANDOM_ONE deterministik, cooldown olay zamanıyla', () => {
         actions,
         events: [{ id: 'r1', enabled: true, platform: 'TIKTOK', triggerType: 'JOIN', audience: { everyone: true }, run: { mode: 'RANDOM_ONE', actionIds: ['a', 'b', 'c'], cooldownSeconds: 10, userCooldownSeconds: 0 } }]
     })
-    const event = (id, ms) => ({ id, kind: 'join', platform: 'tiktok', occurredAtUnixMs: String(ms), actor: { id: 'u' } })
+    // Gerçekçi epoch zamanı: ilk olayda "son çalışma" 0 sayılır, küçük sayılar cooldown'a takılır.
+    const T = 1_760_000_000_000
+    const event = (id, ms) => ({ id, kind: 'join', platform: 'tiktok', occurredAtUnixMs: String(T + ms), actor: { id: 'u' } })
     const first = engine.match(event('e1', 1000))
     assert.equal(first.length, 1)
     assert.equal(first[0].action.id, actions[fnv1a32('e1|r1') % 3].id)
