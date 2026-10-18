@@ -27,6 +27,6 @@ jobs:
       - run: npm test
       - name: CDN'i ısıt
         run: curl -fsS -o /dev/null "https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@${GITHUB_REF_NAME#v}/src/index.js"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
