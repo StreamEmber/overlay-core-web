@@ -3,6 +3,9 @@
  * BİREBİR aynı olmalı (aynı olayda iki taraf aynı kuralı / aynı rastgele aksiyonu seçer):
  * - RANDOM_ONE: fnv1a32(event.id + '|' + rule.id) % actions.length
  * - cooldown zamanı: Number(event.occurredAtUnixMs) || Date.now()
+ * - kitle: takipçi / abone / moderatör (yayıncı dâhil) / hayran kulübü (en az seviye) / hediye
+ *   gönderen / yayın içi hediye sırası ilk N — launcher `LiveEventBus` ile aynı sıralama
+ *   (yayın anahtarı başına kullanıcının toplam değeri; eşitlerde aynı sıra).
  */
 import { fnv1a32, num, handle } from './util.js'
 
@@ -18,6 +21,28 @@ const SIMPLE_TRIGGERS = {
     reward_redeem: 'REWARD_REDEEM'
 }
 const MAX_REPEAT = 20
+const MAX_STREAMS = 8
+
+/** Yayın başına izleyicilerin toplam hediye değeri (sıralama için). */
+function createTally() {
+    const streams = new Map()
+    return {
+        add(key, user, value) {
+            let values = streams.get(key)
+            if (!values) {
+                values = new Map()
+                streams.set(key, values)
+                if (streams.size > MAX_STREAMS) streams.delete(streams.keys().next().value)
+            }
+            if (user && value > 0) values.set(user, (values.get(user) ?? 0) + value)
+            const mine = values.get(user)
+            if (!mine) return null
+            let rank = 1
+            for (const other of values.values()) if (other > mine) rank++
+            return rank
+        }
+    }
+}
 
 export function describe(event) {
     const kind = String(event.kind ?? '')
@@ -53,7 +78,11 @@ export function describe(event) {
         eventName,
         follower: Boolean(actor.follower),
         subscriber: Boolean(actor.subscriber),
-        moderator: Boolean(actor.moderator)
+        moderator: Boolean(actor.moderator || actor.broadcaster),
+        fanClubLevel: Math.max(0, num(actor.fanClubLevel)),
+        giftGiver: Boolean(actor.giftGiver),
+        giftRank: null,
+        streamKey: `${String(event.platform ?? '').toLowerCase()}:${String(event.stream?.target || event.stream?.roomId || '').toLowerCase()}`
     }
 }
 
@@ -96,7 +125,16 @@ function audienceMatches(rule, facts) {
     if ((a.blockedUsers ?? []).some((u) => handle(u) === name)) return false
     if (a.everyone) return true
     if ((a.allowedUsers ?? []).some((u) => handle(u) === name)) return true
-    return (a.followers && facts.follower) || (a.subscribers && facts.subscriber) || (a.moderators && facts.moderator)
+    const fanClub = a.fanClub && facts.fanClubLevel > 0 && facts.fanClubLevel >= (a.fanClubMinLevel ?? 0)
+    const topGifter = a.topGifters && facts.giftRank !== null && facts.giftRank <= (a.topGifterCount ?? 3)
+    return Boolean(
+        (a.followers && facts.follower) ||
+            (a.subscribers && facts.subscriber) ||
+            (a.moderators && facts.moderator) ||
+            (a.giftGivers && (facts.giftGiver || facts.giftRank !== null)) ||
+            fanClub ||
+            topGifter
+    )
 }
 
 /** Kural motoru. `match(event)` → çalışacak `{ action, facts }` listesi (tekrarlar açılmış halde). */
@@ -105,6 +143,7 @@ export function createAutomationEngine() {
     let actionById = new Map()
     const lastRun = new Map()
     const lastUserRun = new Map()
+    const tally = createTally()
     return {
         setRules(data) {
             events = (data?.events ?? []).filter((e) => e.enabled !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -119,6 +158,8 @@ export function createAutomationEngine() {
         match(event) {
             const facts = describe(event)
             if (!facts) return []
+            const value = facts.kind === 'gift' ? facts.units * facts.unitValue : facts.kind === 'donation' ? facts.unitValue : 0
+            facts.giftRank = tally.add(facts.streamKey, facts.username, value)
             const now = Number(event.occurredAtUnixMs) || Date.now()
             const out = []
             for (const rule of events) {

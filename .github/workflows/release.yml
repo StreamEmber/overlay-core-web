@@ -1,5 +1,5 @@
 # v* etiketi itildiğinde: test et, npm'e yayınla, GitHub Release aç.
-#   npm version 1.0.0 && git push --follow-tags
+#   npm version 1.1.0 && git push --follow-tags
 # Yayın kimliği (ikisinden biri):
 #  1) Trusted Publishing (önerilen, token yok): npmjs.com > paket > Settings > Trusted Publisher >
 #     GitHub Actions: StreamEmberPlatform / overlay-core-web / release.yml  → NPM_TOKEN secret'ı gerekmez.

@@ -11,6 +11,7 @@ const SEMVER = String.raw`\d+\.\d+\.\d+`
 const rules = [
     ['src/index.js', new RegExp(String.raw`(export const SDK_VERSION = ')${SEMVER}(')`), `$1${version}$2`],
     ['README.md', new RegExp(String.raw`(@streamemberplatform/overlay-core-web@)${SEMVER}`, 'g'), `$1${version}`],
+    ['CHANGELOG.md', new RegExp(String.raw`(tam sürüm kullanın \(\`@)${SEMVER}`), `$1${version}`],
     ['.github/workflows/release.yml', new RegExp(String.raw`(npm version )${SEMVER}`), `$1${version}`]
 ]
 for (const [file, re, to] of rules) {

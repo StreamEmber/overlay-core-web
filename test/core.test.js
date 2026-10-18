@@ -51,3 +51,23 @@ test('otomasyon: RANDOM_ONE deterministik, cooldown olay zamanıyla', () => {
     assert.equal(engine.match(event('e2', 5000)).length, 0, 'cooldown')
     assert.equal(engine.match(event('e3', 12000)).length, 1)
 })
+
+test('otomasyon: kitle grupları (hayran kulübü seviyesi, hediye sırası)', () => {
+    const engine = createAutomationEngine()
+    const rule = (id, audience) => ({ id, enabled: true, platform: 'TIKTOK', triggerType: 'COMMENT', audience: { allowedUsers: [], blockedUsers: [], ...audience }, run: { actionIds: ['a'] } })
+    engine.setRules({
+        actions: [{ id: 'a', enabled: true }],
+        events: [rule('fan', { fanClub: true, fanClubMinLevel: 5 }), rule('top', { topGifters: true, topGifterCount: 1 })]
+    })
+    const T = 1_760_000_000_000
+    let n = 0
+    const comment = (user, actor = {}) => ({ id: `c${++n}`, kind: 'comment', platform: 'tiktok', occurredAtUnixMs: String(T + n), stream: { target: 's' }, chat: { text: 'hi' }, actor: { id: user, username: user, ...actor } })
+    const gift = (user, coins) => ({ id: `g${++n}`, kind: 'gift', platform: 'tiktok', occurredAtUnixMs: String(T + n), stream: { target: 's' }, gift: { giftId: '1', unitValue: String(coins), count: '1' }, actor: { id: user, username: user } })
+    const rules = (event) => engine.match(event).map((m) => m)
+    assert.equal(rules(comment('low', { fanClubLevel: 2 })).length, 0, 'seviye yetersiz')
+    assert.equal(rules(comment('high', { fanClubLevel: 7 })).length, 1, 'hayran kulübü')
+    engine.match(gift('big', 100))
+    engine.match(gift('small', 5))
+    assert.equal(rules(comment('big')).length, 1, 'ilk sıradaki')
+    assert.equal(rules(comment('small')).length, 0, 'ikinci sıradaki')
+})

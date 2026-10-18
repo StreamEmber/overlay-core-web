@@ -1,6 +1,6 @@
 {
   "name": "@streamemberplatform/overlay-core-web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "StreamEmber yayın overlay çekirdeği: açılış modları, EventFabric canlı akışı, demo modu, launcher kontrolü, aksiyon ekranı ve karşılama motorları.",
   "keywords": ["streamember", "overlay", "obs", "tiktok", "live", "stream", "browser-source"],
   "homepage": "https://github.com/StreamEmberPlatform/overlay-core-web#readme",

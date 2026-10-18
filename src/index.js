@@ -2,7 +2,8 @@
  * @streamemberplatform/overlay-core-web — bütün StreamEmber overlay'lerinin çekirdeği.
  *
  * Açılış modları:
- *   /0xKEY           live  — render.php `window.__SE_OVERLAY__` gömer; EventFabric'e bağlanılır
+ *   /0xKEY           live  — render.php `window.__SE_OVERLAY__` gömer (Falcon `/public/overlays/{key}` kaydı);
+ *                           EventFabric'e kaydın `eventFabricUrl` adresinden (yayıncının bölgesi) bağlanılır
  *   /0xKEY#demo      demo  — kullanıcının varyant/ayarı (+ kuralları), soket yok, sahte olaylar
  *   /overlay-x-web/  demo  — boot verisi yok, varsayılanlarla
  *   ?key=0x…         boot verisi `/api/resolve/{key}`'den (geliştirme)
@@ -21,13 +22,20 @@ export { template, fnv1a32, num, handle, mergeConfig } from './util.js'
 export { createScreenOverlay } from './screen.js'
 export { createWelcomeOverlay, matchesRule, findRule } from './welcome.js'
 
-export const SDK_VERSION = '1.0.0'
+export const SDK_VERSION = '1.1.0'
 const MESSAGE_TYPE = 'streamember:overlay'
 const REFRESH_MS = 60_000
 
 async function json(url) {
     const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) throw new Error(`${url}: ${response.status}`)
+    if (!response.ok) {
+        // Sözleşme hata gövdesi: { status, code, message }
+        const body = await response.json().catch(() => null)
+        const error = new Error(body?.message || `${url}: ${response.status}`)
+        error.status = response.status
+        error.code = body?.code || 'http_error'
+        throw error
+    }
     return response.json()
 }
 
@@ -70,6 +78,8 @@ export async function createOverlay(def = {}) {
         slot: boot?.slot ?? 0,
         name: boot?.name ?? null,
         customerUuid: boot?.customerUuid ?? null,
+        /** Yayıncının bölgesindeki EventFabric; 60 sn'lik tazelemede güncellenir (bölge değişimi). */
+        eventFabricUrl: boot?.eventFabricUrl ?? null,
         user: boot?.user ?? null,
         locked: Boolean(boot?.locked),
         welcome: boot?.welcome ?? [],
@@ -161,19 +171,34 @@ export async function createOverlay(def = {}) {
     if (window.parent !== window) window.parent.postMessage({ type: MESSAGE_TYPE, action: 'ready', payload: { kind: ctx.kind, key: ctx.key } }, '*')
 
     if (live) {
-        connectEvents({
-            url: boot.eventsUrl || 'wss://eventfabric.streamember.com',
+        const events = connectEvents({
+            url: () => ctx.eventFabricUrl,
             customerUuid: ctx.customerUuid,
             onEvent: (event, meta) => dispatch(event, meta),
             onStatus: (status) => {
                 ctx.status = status
                 html.dataset.status = status
+            },
+            onError: async (error) => {
+                console.warn('[overlay] EventFabric', error.code, error.message)
+                // Yayıncı bölge değiştirdi: kaydı yeniden çöz, yeni adrese bağlan.
+                if (error.code !== 'wrong_region') return
+                const next = await json(`/api/resolve/${ctx.key}`).catch(() => null)
+                const target = next?.eventFabricUrl || error.params?.eventFabricUrl
+                if (target && target !== ctx.eventFabricUrl) {
+                    ctx.eventFabricUrl = target
+                    events.reconnect()
+                }
             }
         })
         // Launcher'dan kaydedilen değişiklikler OBS'teki kopyaya en geç bir dakikada yansır.
         setInterval(async () => {
             try {
                 const next = await json(`/api/resolve/${ctx.key}`)
+                if (next.eventFabricUrl && next.eventFabricUrl !== ctx.eventFabricUrl) {
+                    ctx.eventFabricUrl = next.eventFabricUrl
+                    events.reconnect()
+                }
                 if (next.revision !== ctx.revision) {
                     Object.assign(ctx, { revision: next.revision, linkConfig: next.config ?? {}, welcome: next.welcome ?? [], name: next.name, locked: next.locked })
                     if (next.locked) return location.reload()
