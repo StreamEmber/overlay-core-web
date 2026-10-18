@@ -32,10 +32,11 @@ function loadLottie() {
  * Medyayı `container` içinde oynatır, bitince (ya da `maxMs` dolunca) kaldırır.
  * Resim/lottie için süre `durationMs` (varsayılan 5 sn). Hata yayılmaz: oynatılamayan medya atlanır.
  */
-export async function playMedia(container, { url, type, volume = 100, durationMs = null, maxMs = null, className = '' }) {
+export async function playMedia(container, { url, type, volume = 100, durationMs = null, maxMs = null, startSeconds = null, endSeconds = null, className = '' }) {
     if (!url) return
     const kind = mediaKind(url, type)
-    const limit = maxMs ?? 60_000
+    const range = endSeconds ? (endSeconds - (startSeconds ?? 0)) * 1000 : Infinity
+    const limit = Math.min(maxMs ?? 60_000, range)
     let el
     let done
     try {
@@ -44,6 +45,7 @@ export async function playMedia(container, { url, type, volume = 100, durationMs
             el.src = url
             el.volume = Math.max(0, Math.min(1, volume / 100))
             el.playsInline = true
+            if (startSeconds) el.currentTime = startSeconds
             done = new Promise((resolve) => {
                 el.onended = resolve
                 el.onerror = resolve

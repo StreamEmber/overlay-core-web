@@ -9,6 +9,7 @@
  */
 import { createOverlay } from './index.js'
 import { playMedia, createQueue } from './media.js'
+import { playEmbed } from './embed.js'
 import { demoEvent, demoUser } from './demo.js'
 import { num, handle, template } from './util.js'
 
@@ -80,7 +81,9 @@ export function createWelcomeOverlay(opts = {}) {
         queue.push(async () => {
             const cleanup = opts.decorate?.(stage, actor, rule, ctx)
             try {
-                await playMedia(stage, { url: rule.mediaUrl, type: rule.mediaType, volume: rule.volume ?? 100, maxMs: 30_000, className: 'se-welcome-video' })
+                const opts = { volume: rule.volume ?? 100, maxMs: 60_000, className: 'se-welcome-video' }
+                if (rule.embed) await playEmbed(stage, rule.embed, opts)
+                else await playMedia(stage, { url: rule.mediaUrl, type: rule.mediaType, ...opts })
             } finally {
                 if (typeof cleanup === 'function') cleanup()
             }

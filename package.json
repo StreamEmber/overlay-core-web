@@ -1,15 +1,23 @@
 {
-  "name": "@streamemberplatform/overlay-core-web",
-  "version": "1.1.0",
+  "name": "@streamember/overlay-core-web",
+  "version": "1.2.0",
   "description": "StreamEmber yayın overlay çekirdeği: açılış modları, EventFabric canlı akışı, demo modu, launcher kontrolü, aksiyon ekranı ve karşılama motorları.",
-  "keywords": ["streamember", "overlay", "obs", "tiktok", "live", "stream", "browser-source"],
-  "homepage": "https://github.com/StreamEmberPlatform/overlay-core-web#readme",
+  "keywords": [
+    "streamember",
+    "overlay",
+    "obs",
+    "tiktok",
+    "live",
+    "stream",
+    "browser-source"
+  ],
+  "homepage": "https://github.com/StreamEmber/overlay-core-web#readme",
   "bugs": {
-    "url": "https://github.com/StreamEmberPlatform/overlay-core-web/issues"
+    "url": "https://github.com/StreamEmber/overlay-core-web/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/StreamEmberPlatform/overlay-core-web.git"
+    "url": "git+https://github.com/StreamEmber/overlay-core-web.git"
   },
   "license": "MIT",
   "author": "Amiral Router (Stream Ember)",
@@ -23,15 +31,18 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "files": ["src", "LICENSE", "README.md", "CHANGELOG.md"],
+  "files": [
+    "src",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "test": "node --test",
     "version": "node tools/set-version.mjs && git add -A"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "private": true
 }

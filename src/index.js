@@ -1,5 +1,5 @@
 /**
- * @streamemberplatform/overlay-core-web — bütün StreamEmber overlay'lerinin çekirdeği.
+ * @streamember/overlay-core-web — bütün StreamEmber overlay'lerinin çekirdeği.
  *
  * Açılış modları:
  *   /0xKEY           live  — render.php `window.__SE_OVERLAY__` gömer (Falcon `/public/overlays/{key}` kaydı);
@@ -20,9 +20,10 @@ export { playMedia, createQueue, createLeaderboard, mediaKind } from './media.js
 export { demoEvent, demoUser, randomDemoEvent, avatar } from './demo.js'
 export { template, fnv1a32, num, handle, mergeConfig } from './util.js'
 export { createScreenOverlay } from './screen.js'
+export { playEmbed, parseEmbedUrl, embedSrc, EMBED_PROVIDERS, EMBED_ID } from './embed.js'
 export { createWelcomeOverlay, matchesRule, findRule } from './welcome.js'
 
-export const SDK_VERSION = '1.1.0'
+export const SDK_VERSION = '1.2.0'
 const MESSAGE_TYPE = 'streamember:overlay'
 const REFRESH_MS = 60_000
 

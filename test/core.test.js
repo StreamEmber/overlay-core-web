@@ -71,3 +71,23 @@ test('otomasyon: kitle grupları (hayran kulübü seviyesi, hediye sırası)', (
     assert.equal(rules(comment('big')).length, 1, 'ilk sıradaki')
     assert.equal(rules(comment('small')).length, 0, 'ikinci sıradaki')
 })
+
+test('gömülü video bağlantıları', async () => {
+    const { parseEmbedUrl } = await import('../src/embed.js')
+    const cases = [
+        ['https://youtu.be/dQw4w9WgXcQ?t=42', 'youtube', 'dQw4w9WgXcQ', 42],
+        ['https://www.youtube.com/shorts/dQw4w9WgXcQ', 'youtube', 'dQw4w9WgXcQ'],
+        ['https://vimeo.com/76979871', 'vimeo', '76979871'],
+        ['https://vimeo.com/76979871/abcdef1234', 'vimeo', '76979871/abcdef1234'],
+        ['https://www.dailymotion.com/video/x8abcd1_baslik', 'dailymotion', 'x8abcd1'],
+        ['https://dai.ly/x8abcd1', 'dailymotion', 'x8abcd1'],
+        ['https://clips.twitch.tv/FunnyClipSlug-AbC123', 'twitch', 'FunnyClipSlug-AbC123'],
+        ['https://www.twitch.tv/kanal/clip/FunnyClipSlug-AbC123', 'twitch', 'FunnyClipSlug-AbC123'],
+        ['https://www.twitch.tv/videos/2245678901', 'twitch', '2245678901'],
+        ['https://streamable.com/moo2xy', 'streamable', 'moo2xy'],
+        ['https://www.tiktok.com/@kisi/video/7311234567890123456', 'tiktok', '7311234567890123456']
+    ]
+    for (const [url, provider, videoId, start = null] of cases) assert.deepEqual(parseEmbedUrl(url), { provider, videoId, start }, url)
+    assert.equal(parseEmbedUrl('https://example.com/video.mp4'), null)
+    assert.equal(parseEmbedUrl('https://www.youtube.com/watch?v=kisa'), null)
+})

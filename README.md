@@ -3,10 +3,10 @@
 StreamEmber yayın overlay'lerinin (OBS / TikTok LIVE Studio tarayıcı kaynağı) ortak çekirdeği.
 Bağlantı, kimlik, yeniden bağlanma, demo modu, ayar ve launcher kontrolü burada; overlay yalnız ne çizeceğini yazar.
 
-- npm: [`@streamemberplatform/overlay-core-web`](https://www.npmjs.com/package/@streamemberplatform/overlay-core-web)
-- CDN: `https://cdn.jsdelivr.net/npm/@streamemberplatform/overlay-core-web@1.1.0/src/index.js`
+- Depo: [`StreamEmber/overlay-core-web`](https://github.com/StreamEmber/overlay-core-web) (herkese açık; jsDelivr sürüm etiketinden okur)
+- CDN: `https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.2.0/src/index.js`
 
-Derleme adımı ve bağımlılık yok (düz ES modülleri). **Overlay'ler paketi yalnız CDN'den, her zaman tam sürümle yükler**
+Derleme adımı, bağımlılık ve npm yayını yok (düz ES modülleri; jsDelivr dosyaları doğrudan GitHub etiketinden sunar). **Overlay'ler paketi yalnız CDN'den, her zaman tam sürümle yükler**
 (`@x.y.z`; `@1` ya da `@latest` kullanılmaz). Yerel kopya, göreli yol ya da başka bir depoya başvuru yoktur.
 
 ## Hızlı başlangıç
@@ -30,7 +30,7 @@ overlay-<ad>-web/
 <head>
   <meta charset="utf-8">
   <script type="importmap">
-    { "imports": { "@streamemberplatform/overlay-core-web": "https://cdn.jsdelivr.net/npm/@streamemberplatform/overlay-core-web@1.1.0/src/index.js" } }
+    { "imports": { "@streamember/overlay-core-web": "https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.2.0/src/index.js" } }
   </script>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="overlay.js"></script>
@@ -42,7 +42,7 @@ overlay-<ad>-web/
 **overlay.js**
 
 ```js
-import { createOverlay, createLeaderboard, num } from '@streamemberplatform/overlay-core-web'
+import { createOverlay, createLeaderboard, num } from '@streamember/overlay-core-web'
 
 const board = createLeaderboard()
 
@@ -128,10 +128,32 @@ Kilitli overlay (abonelik gerekli) canlıda hiçbir şey çizmez.
 - `createScreenOverlay({ init?, onConfig?, stage? })` — aksiyon ekranı. Kullanıcının otomasyon kurallarını değerlendirir,
   yalnız `overlayScreen === ctx.slot` olan aksiyonların animasyon, görsel, video, ses ve mesaj adımlarını sırayla oynatır
   (`ctx.config.maxQueue`).
+  Video adımı yüklenen dosya (`video.media`) ya da gömülü video (`video.embed`, aşağıda) olabilir; `startSeconds` /
+  `endSeconds` her ikisinde geçerlidir. Kurallar canlıda 5 sn'de bir okunur: launcher'da **profil değişince** ekran
+  yeni profilin aksiyonlarını en geç birkaç saniyede oynatır (kural kümesi `profileId` + `updatedAt` ile tanınır).
 - `createWelcomeOverlay({ init?, onConfig?, stage?, decorate? })` — karşılama. Yayına katılan izleyiciyi kurallarla eşleştirir
   (ilk eşleşen kazanır, her izleyici yayın başına bir kez), kuralın videosunu kuralın ses seviyesiyle oynatır.
   `decorate(stage, actor, rule, ctx)` video süresince ek öğe (isim kartı) ekleyip temizleyici döndürebilir.
   Koşullar: `nickname` / `username` → `equals | contains | not_contains`; `level` / `fan_club_level` → `gte`; `fan_club` → `member`.
+  Kuralın videosu yüklenen dosya (`mediaUrl`) ya da gömülü video (`embed`) olabilir.
+
+### Gömülü video
+
+`playEmbed(container, ref, { volume?, startSeconds?, endSeconds?, maxMs?, className? })` — `ref`:
+`{ provider, videoId, url, title?, author?, thumbnailUrl?, durationSeconds? }` (Falcon `EmbedRef`).
+
+| `provider` | Örnek bağlantı | Bitiş |
+|---|---|---|
+| `youtube` | `youtu.be/ID`, `youtube.com/watch?v=ID`, `/shorts/ID` | oynatıcı olayı |
+| `vimeo` | `vimeo.com/123`, `vimeo.com/123/gizliAnahtar` | oynatıcı olayı |
+| `dailymotion` | `dailymotion.com/video/x8abc`, `dai.ly/x8abc` | oynatıcı olayı |
+| `twitch` | `clips.twitch.tv/Slug`, `twitch.tv/<kanal>/clip/Slug`, `twitch.tv/videos/123` | `durationSeconds` / `endSeconds` / `maxMs` |
+| `streamable` | `streamable.com/abc12` | oynatıcı olayı (player.js) |
+| `tiktok` | `tiktok.com/@kisi/video/123…` | oynatıcı olayı |
+
+`parseEmbedUrl(url) → { provider, videoId, start } | null`, `embedSrc(ref, opts)`, `EMBED_PROVIDERS`, `EMBED_ID` (kimlik desenleri;
+launcher ve Falcon aynı desenleri kullanır). Her durumda `maxMs` (varsayılan 60 sn) üst sınırdır.
+iframe sınıfları `se-media se-embed se-embed--<provider>` (TikTok dikeydir; overlay CSS'i en-boy oranını buna göre verir).
 
 ### Yardımcılar
 
@@ -188,6 +210,8 @@ CDN'de her zaman tam sürüm kullanılır (`@x.y.z`). Yeni sürüm çıkınca ov
 ```bash
 npm test
 # CHANGELOG.md güncelle
-npm version 1.0.1        # package.json, src/index.js SDK_VERSION, README ve CHANGELOG'daki sürüm, commit + etiket
-git push --follow-tags   # Release iş akışı npm'e yayınlar ve GitHub Release açar
+npm version 1.2.1        # package.json, src/index.js SDK_VERSION, README ve CHANGELOG'daki sürüm, commit + etiket
+git push --follow-tags   # etiket jsDelivr'de hemen kullanılabilir; Release iş akışı GitHub Release açar
 ```
+
+Sonra overlay depolarının `index.html` importmap'i yeni sürüme çekilir.

@@ -1,6 +1,14 @@
 # Değişiklik günlüğü
 
-Sürümler [SemVer](https://semver.org/lang/tr/) izler. CDN'de her zaman tam sürüm kullanın (`@1.1.0`).
+Sürümler [SemVer](https://semver.org/lang/tr/) izler. CDN'de her zaman tam sürüm kullanın (`@1.2.0`).
+
+## 1.2.0 — 2026-10-18
+- Dağıtım: paket artık npm'de değil; CDN `https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.2.0/src/index.js`
+  (GitHub etiketi). Import adı `@streamember/overlay-core-web`. Depo `StreamEmber/overlay-core-web`.
+- Gömülü video: `playEmbed`, `parseEmbedUrl`, `embedSrc` — YouTube, Vimeo, Dailymotion, Twitch, Streamable, TikTok.
+  Aksiyon ekranı `video.embed`, karşılama `rule.embed` oynatır; yüklenen videoda `startSeconds` / `endSeconds`.
+- Aksiyon ekranı kuralları canlıda 5 sn'de bir okunur ve yalnız `profileId|updatedAt` değişince yeniden kurulur:
+  launcher'da profil değişince ekranlar birkaç saniyede yeni profilin aksiyonlarına geçer.
 
 ## 1.1.0 — 2026-10-17
 - Bölgeler: EventFabric adresi artık sabit değil; Falcon overlay kaydının `eventFabricUrl` alanından (yayıncının

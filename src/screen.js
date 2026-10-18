@@ -6,10 +6,22 @@
 import { createOverlay } from './index.js'
 import { createAutomationEngine } from './automation.js'
 import { playMedia, createQueue } from './media.js'
+import { playEmbed } from './embed.js'
 import { demoEvent } from './demo.js'
 import { template } from './util.js'
 
+const RULES_MS = 5_000
 const secs = (value) => (value ? Number(value) * 1000 : null)
+
+const DEMO_TEXT = {
+    en: ['Screen', '{nickname} triggered an action'],
+    tr: ['Ekran', '{nickname} bir aksiyon tetikledi']
+}
+function demoMessage(ctx) {
+    const lang = String(new URLSearchParams(location.hash.slice(1)).get('lang') || ctx.user?.language || 'en').slice(0, 2)
+    const [screen, text] = DEMO_TEXT[lang] ?? DEMO_TEXT.en
+    return { title: `${screen} ${ctx.slot || 1}`, text, durationSeconds: 3 }
+}
 
 export async function playAction(stage, action, facts = {}, ctx) {
     const f = action.features ?? {}
@@ -26,7 +38,8 @@ export async function playAction(stage, action, facts = {}, ctx) {
     const tasks = []
     if (f.animation?.animation?.url) tasks.push(playMedia(stage, { url: f.animation.animation.url, volume, durationMs: secs(f.animation.durationSeconds), maxMs, className: 'se-animation' }))
     if (f.image?.media?.url) tasks.push(playMedia(stage, { url: f.image.media.url, type: 'IMAGE', durationMs: secs(f.image.durationSeconds), maxMs, className: 'se-image' }))
-    if (f.video?.media?.url) tasks.push(playMedia(stage, { url: f.video.media.url, type: 'VIDEO', volume, maxMs, className: 'se-video' }))
+    if (f.video?.embed) tasks.push(playEmbed(stage, f.video.embed, { volume, startSeconds: f.video.startSeconds, endSeconds: f.video.endSeconds, maxMs, className: 'se-video' }))
+    else if (f.video?.media?.url) tasks.push(playMedia(stage, { url: f.video.media.url, type: 'VIDEO', volume, maxMs, startSeconds: f.video.startSeconds, endSeconds: f.video.endSeconds, className: 'se-video' }))
     if (f.sound?.sound?.url) tasks.push(playMedia(stage, { url: f.sound.sound.url, type: 'AUDIO', volume, maxMs }))
     if (f.message && (f.message.text || f.message.title)) tasks.push(showMessage(stage, template(f.message.title, values), template(f.message.text, values), secs(f.message.durationSeconds) ?? maxMs ?? 5000, ctx))
     // shortcut: TTS özelliği ekranda henüz seslendirilmiyor (GLE TTS bağlanınca eklenecek).
@@ -54,11 +67,18 @@ export function createScreenOverlay(opts = {}) {
     let stage
     let demoIndex = 0
 
+    let version = null
+    /** Kurallar yalnız profil ya da içerik değişince yeniden kurulur (profil değişimi = başka `profileId`). */
     async function loadRules(ctx) {
         if (!ctx.key) return
         try {
             const response = await fetch(`/api/automation/${ctx.key}${ctx.mode === 'demo' ? '?fresh=1' : ''}`, { cache: 'no-store' })
-            if (response.ok) engine.setRules(await response.json())
+            if (!response.ok) return
+            const rules = await response.json()
+            const next = `${rules.profileId}|${rules.updatedAt}`
+            if (next === version) return
+            version = next
+            engine.setRules(rules)
         } catch (error) {
             console.warn('[overlay] otomasyon kuralları okunamadı', error)
         }
@@ -73,6 +93,8 @@ export function createScreenOverlay(opts = {}) {
             stage = opts.stage ?? ctx.root
             queue.setMax(Number(ctx.config.maxQueue) || 5)
             await loadRules(ctx)
+            // Launcher'da profil değişince ekran en geç RULES_MS içinde yeni profilin aksiyonlarını oynatır.
+            if (ctx.mode === 'live') setInterval(() => loadRules(ctx), RULES_MS)
             await opts.init?.(ctx)
         },
         onEvent(event, ctx, meta) {
@@ -87,7 +109,7 @@ export function createScreenOverlay(opts = {}) {
             const list = mine(ctx)
             const action = list.length
                 ? list[demoIndex++ % list.length]
-                : { id: 'demo', volume: 0, features: { message: { title: `Ekran ${ctx.slot || 1}`, text: '{nickname} bir aksiyon tetikledi', durationSeconds: 3 } } }
+                : { id: 'demo', volume: 0, features: { message: demoMessage(ctx) } }
             return { ...demoEvent('gift'), __action: action }
         },
         onTrigger(payload, ctx) {
@@ -104,6 +126,5 @@ export function createScreenOverlay(opts = {}) {
             queue.setMax(Number(ctx.config.maxQueue) || 5)
             opts.onConfig?.(ctx)
         },
-        onRefresh: loadRules
     })
 }
