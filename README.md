@@ -4,7 +4,7 @@ StreamEmber yayın overlay'lerinin (OBS / TikTok LIVE Studio tarayıcı kaynağ�
 Bağlantı, kimlik, yeniden bağlanma, demo modu, ayar ve launcher kontrolü burada; overlay yalnız ne çizeceğini yazar.
 
 - Depo: [`StreamEmber/overlay-core-web`](https://github.com/StreamEmber/overlay-core-web) (herkese açık; jsDelivr sürüm etiketinden okur)
-- CDN: `https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.2.0/src/index.js`
+- CDN: `https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.3.0/src/index.js`
 
 Derleme adımı, bağımlılık ve npm yayını yok (düz ES modülleri; jsDelivr dosyaları doğrudan GitHub etiketinden sunar). **Overlay'ler paketi yalnız CDN'den, her zaman tam sürümle yükler**
 (`@x.y.z`; `@1` ya da `@latest` kullanılmaz). Yerel kopya, göreli yol ya da başka bir depoya başvuru yoktur.
@@ -30,7 +30,7 @@ overlay-<ad>-web/
 <head>
   <meta charset="utf-8">
   <script type="importmap">
-    { "imports": { "@streamember/overlay-core-web": "https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.2.0/src/index.js" } }
+    { "imports": { "@streamember/overlay-core-web": "https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.3.0/src/index.js" } }
   </script>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="overlay.js"></script>
@@ -111,7 +111,7 @@ Kilitli overlay (abonelik gerekli) canlıda hiçbir şey çizmez.
 |---|---|
 | `events?: string[]` | Dinlenecek türler; yoksa `manifest.events`. |
 | `init?(ctx)` | Bir kez, ilk olaydan önce. |
-| `onEvent?(event, ctx, meta)` | Olay geldi. `meta.demo` (sahte olay), `meta.replayed` (yeniden bağlanınca tekrar gelen). |
+| `onEvent?(event, ctx, meta)` | Olay geldi. `meta.demo` (sahte olay), `meta.replayed` (koptuktan sonra geri oynatılan), `meta.stale` (geri oynatılan ve 60 sn'den eski; uyarı gösterme, sayaç sayabilir). |
 | `onReset?(ctx)` | Launcher "Sıfırla". |
 | `onConfig?(ctx)` | Varyant, ayar ya da kurallar değişti. |
 | `demo?(ctx) → event \| null` | Demo olayı üretir; `null` bu turu atlar. Yoksa manifest türlerinden rastgele olay. |

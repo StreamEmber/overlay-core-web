@@ -23,9 +23,11 @@ export { createScreenOverlay } from './screen.js'
 export { playEmbed, parseEmbedUrl, embedSrc, EMBED_PROVIDERS, EMBED_ID } from './embed.js'
 export { createWelcomeOverlay, matchesRule, findRule } from './welcome.js'
 
-export const SDK_VERSION = '1.2.0'
+export const SDK_VERSION = '1.3.0'
 const MESSAGE_TYPE = 'streamember:overlay'
 const REFRESH_MS = 60_000
+/** Bu hatalarda overlay kaydı yeniden çözülür (EventFabric adresi değişmiş olabilir). */
+const RESOLVE_ON = ['wrong_node', 'node_disabled', 'connect_failed']
 
 async function json(url) {
     const response = await fetch(url, { cache: 'no-store' })
@@ -57,7 +59,8 @@ async function loadBoot() {
  * @param {object} def
  * @param {string[]} [def.events]      dinlenecek kanonik türler (`like`, `gift` …); yoksa manifest `events`
  * @param {(ctx) => any} [def.init]
- * @param {(event, ctx, meta) => any} [def.onEvent]   meta: { demo?, replayed? }
+ * @param {(event, ctx, meta) => any} [def.onEvent]   meta: { demo?, replayed?, stale? } — stale: kopmadan sonra geri
+ *                                                    oynatılan, 60 sn'den eski olay (sayaçlar sayar, uyarılar göstermez)
  * @param {(ctx) => any} [def.onReset]
  * @param {(ctx) => any} [def.onConfig]       varyant / ayar / kurallar değişti
  * @param {(ctx) => object|null} [def.demo]   demo olayı üretir (null = bu tur atla)
@@ -182,8 +185,9 @@ export async function createOverlay(def = {}) {
             },
             onError: async (error) => {
                 console.warn('[overlay] EventFabric', error.code, error.message)
-                // Yayıncı bölge değiştirdi: kaydı yeniden çöz, yeni adrese bağlan.
-                if (error.code !== 'wrong_region') return
+                // Yayıncı başka EventFabric makinesinde (wrong_node), makine kapanıyor (node_disabled) ya da üst üste
+                // bağlanılamıyor: kaydı yeniden çöz, adres değiştiyse yeni adrese bağlan.
+                if (!RESOLVE_ON.includes(error.code)) return
                 const next = await json(`/api/resolve/${ctx.key}`).catch(() => null)
                 const target = next?.eventFabricUrl || error.params?.eventFabricUrl
                 if (target && target !== ctx.eventFabricUrl) {

@@ -105,6 +105,7 @@ export function createWelcomeOverlay(opts = {}) {
                 greeted.clear()
             }
             const viewer = String(actor.id ?? actor.username ?? '')
+            if (meta.stale) return // çoktan gitmiş izleyici karşılanmaz
             if (!meta.demo && (!viewer || greeted.has(viewer))) return
             const rule = event.__rule ?? findRule(ctx.welcome, actor)
             if (!rule) return

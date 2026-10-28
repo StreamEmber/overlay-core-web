@@ -1,6 +1,14 @@
 # Değişiklik günlüğü
 
-Sürümler [SemVer](https://semver.org/lang/tr/) izler. CDN'de her zaman tam sürüm kullanın (`@1.2.0`).
+Sürümler [SemVer](https://semver.org/lang/tr/) izler. CDN'de her zaman tam sürüm kullanın (`@1.3.0`).
+
+## 1.3.0 — 2026-10-23
+- EventFabric makineleri: `wrong_region` kalktı. `wrong_node` (yayıncı başka makinede), `node_disabled` (makine kapanıyor)
+  ya da soketin üst üste 3 kez hiç açılamaması (`connect_failed`; tarayıcı el sıkışma reddinin 409/503 gövdesini göremez)
+  kaydı yeniden çözer, adres değiştiyse yeni makineye bağlanır.
+- Yeniden bağlanma 1, 2, 4, 8, 15, 30 sn, ±%30 rastgele sapmalı (eskisi 1–15 sn, sapmasız).
+- EventFabric artık kopmada 5 dk'ya kadar geri oynatıyor: `meta.stale` (geri oynatılan, 60 sn'den eski olay) eklendi.
+  Aksiyon ekranı ve karşılama `stale` olayda bir şey oynatmaz; sayaç gibi overlay'ler saymaya devam edebilir.
 
 ## 1.2.0 — 2026-10-18
 - Dağıtım: paket artık npm'de değil; CDN `https://cdn.jsdelivr.net/gh/StreamEmber/overlay-core-web@1.2.0/src/index.js`

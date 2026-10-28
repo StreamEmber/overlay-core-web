@@ -4,8 +4,16 @@
  * Aynı olay kimliği iki kez verilmez.
  *
  * `url`: EventFabric kök adresi ya da onu döndüren fonksiyon. Adres her (yeniden) bağlanmada okunur; değişmişse
- * (yayıncı bölge değiştirdi) cursor bırakılır — eski bölgenin cursor'ı yenisinde geçersizdir.
+ * (yayıncı başka EventFabric makinesine geçti) cursor bırakılır — eski makinenin cursor'ı yenisinde geçersizdir.
+ *
+ * Yeniden bağlanma 1, 2, 4, 8, 15, 30 sn, ±%30 rastgele sapmalı. Tarayıcı el sıkışma reddinin (409 `wrong_node`,
+ * 503 `node_disabled`) gövdesini göremez; soket üst üste 3 kez hiç açılamazsa `onError({ code: 'connect_failed' })`
+ * çağrılır ki adres yeniden çözülsün.
  */
+const BACKOFF_SECONDS = [1, 2, 4, 8, 15, 30]
+const FAILURES_BEFORE_RESOLVE = 3
+/** EventFabric kopmada 5 dk'ya kadar geri oynatır; bundan eski geri oynatılan olay `stale` işaretlenir (uyarı gösterilmez). */
+const STALE_REPLAY_MS = 60_000
 const MAX_SEEN = 4000
 
 export function connectEvents({ url, customerUuid, onEvent, onStatus = () => {}, onError = () => {} }) {
@@ -15,6 +23,7 @@ export function connectEvents({ url, customerUuid, onEvent, onStatus = () => {},
     let timer = null
     let stopped = false
     let lastUrl = null
+    let failures = 0
     const seen = new Set()
 
     function open() {
@@ -38,8 +47,11 @@ export function connectEvents({ url, customerUuid, onEvent, onStatus = () => {},
             return retry()
         }
         const current = socket
+        let opened = false
         current.onopen = () => {
+            opened = true
             attempt = 0
+            failures = 0
             onStatus('open')
         }
         current.onmessage = (message) => {
@@ -66,7 +78,9 @@ export function connectEvents({ url, customerUuid, onEvent, onStatus = () => {},
                         if (seen.size > MAX_SEEN) seen.delete(seen.values().next().value)
                     }
                     try {
-                        onEvent(frame.event, { replayed: Boolean(frame.replayed) })
+                        const replayed = Boolean(frame.replayed)
+                        const stale = replayed && Date.now() - Number(frame.event.occurredAtUnixMs || 0) > STALE_REPLAY_MS
+                        onEvent(frame.event, { replayed, stale })
                     } catch (error) {
                         console.error('[overlay] olay işlenemedi', error)
                     }
@@ -78,6 +92,10 @@ export function connectEvents({ url, customerUuid, onEvent, onStatus = () => {},
             if (socket !== current) return
             socket = null
             if (closeEvent?.reason && /^[a-z_]+$/.test(closeEvent.reason) && closeEvent.reason !== 'reconnect') onError({ type: 'error', code: closeEvent.reason, message: closeEvent.reason })
+            else if (!opened && ++failures >= FAILURES_BEFORE_RESOLVE) {
+                failures = 0
+                onError({ type: 'error', code: 'connect_failed', message: 'EventFabric could not be reached' })
+            }
             retry()
         }
     }
@@ -89,7 +107,7 @@ export function connectEvents({ url, customerUuid, onEvent, onStatus = () => {},
         timer = setTimeout(() => {
             timer = null
             open()
-        }, Math.min(15_000, 1000 * 2 ** Math.min(4, attempt - 1)))
+        }, BACKOFF_SECONDS[Math.min(attempt - 1, BACKOFF_SECONDS.length - 1)] * 1000 * (0.7 + Math.random() * 0.6))
     }
 
     open()

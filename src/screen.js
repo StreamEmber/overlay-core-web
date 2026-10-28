@@ -99,6 +99,7 @@ export function createScreenOverlay(opts = {}) {
         },
         onEvent(event, ctx, meta) {
             if (meta.demo && event.__action) return enqueue(ctx, event.__action, { nickname: event.actor?.nickname, username: event.actor?.username })
+            if (meta.stale) return // dakikalar önceki hediye için şimdi aksiyon oynatılmaz
             for (const { action, facts } of engine.match(event)) {
                 if (Number(action.overlayScreen) === Number(ctx.slot)) enqueue(ctx, action, facts)
             }
